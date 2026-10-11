@@ -1,0 +1,38 @@
+{
+  "name": "@red-cup-engineering/workspace-content-graph-service",
+  "version": "0.5.2",
+  "private": false,
+  "type": "module",
+  "description": "Reads package apexes, JSON Schemas, and Markdown into one addressed actor/content graph, exposing Node glossary descent readouts and explicit formal-correspondence obstructions.",
+  "license": "Apache-2.0",
+  "exports": {
+    ".": "./src/workspace-content-graph.mjs"
+  },
+  "bin": {
+    "catalog-workspace-content-graph": "./scripts/catalog-workspace-content-graph.mjs"
+  },
+  "files": [
+    "scripts",
+    "src"
+  ],
+  "scripts": {
+    "check": "node --check src/workspace-content-graph.mjs && node --check scripts/catalog-workspace-content-graph.mjs",
+    "test": "node --test test/*.test.mjs",
+    "verify": "npm run check && npm test"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "semiotic": {
+    "operation": "catalog-workspace-content-graph",
+    "precondition": "urn:semiotic:type:ObservedWorkspaceResourceSet",
+    "postcondition": "urn:semiotic:type:WorkspaceContentGraph"
+  },
+  "dependencies": {
+    "@lenticule-science/articulating": "0.2.0",
+    "@lenticule-science/articulating-language-cone-service": "0.1.5",
+    "@red-cup-engineering/json-schema-services-section": "0.1.3",
+    "@red-cup-engineering/markdown-engineering-services-section": "workspace:*",
+    "@red-cup-engineering/semantic-content-identify-service": "0.2.2"
+  }
+}
