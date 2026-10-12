@@ -1,9 +1,5 @@
 import { articulate, mark, utterance } from "@lenticule-science/articulating";
 import { predicate, presentPredicationSite } from "@lenticule-science/articulating/predicating";
-import {
-  ARTICULATING_APEX,
-  executeArticulateUtterance,
-} from "@lenticule-science/articulating-language-cone-service";
 import { readMarkdownDocument } from "@red-cup-engineering/markdown-engineering-services-section/read-markdown-document";
 import { createSchema, validateInstance } from "@red-cup-engineering/json-schema-services-section";
 import {
@@ -112,8 +108,23 @@ function articulateGlossaryTerm(resource, readout, termSchemaNi, schemaValidatio
     definition: readout.definition,
   });
   const termNi = identify("glossary.term", termBody).token;
-  const articulation = executeArticulateUtterance({ apex: ARTICULATING_APEX, tokenMark: readout.token, claimMark: readout.definition });
-  const predicationGenerators = presentPredicationSite(predicate(articulate(utterance(mark(readout.token), mark(readout.definition)))));
+  // This is a local mathematical readout, not a language-cone service receipt
+  // or a Lean/Solidity correspondence proof. Use the actual primitive once.
+  const request = Object.freeze({ tokenMark: readout.token, claimMark: readout.definition });
+  if (Buffer.byteLength(JSON.stringify(request), "utf8") > 65_536) {
+    throw new RangeError("glossary articulation input exceeds 65536 bytes");
+  }
+  const requestNi = identify("workspace.glossary-articulation.request", request).token;
+  const nativeCell = articulate(utterance(mark(request.tokenMark), mark(request.claimMark)));
+  const articulationBody = Object.freeze({
+    kind: "workspace.glossary-articulation.readout",
+    version: 1,
+    implementation: "@lenticule-science/articulating#articulate",
+    requestNi,
+    cell: structuredClone(nativeCell),
+  });
+  const articulation = Object.freeze({ ...articulationBody, id: identify(articulationBody.kind, articulationBody).token });
+  const predicationGenerators = presentPredicationSite(predicate(nativeCell));
   const predicationGeneratorsNi = identify("predication.site.generators", predicationGenerators).token;
   const admissionBody = Object.freeze({
     kind: "glossary.term.admission",
@@ -128,8 +139,8 @@ function articulateGlossaryTerm(resource, readout, termSchemaNi, schemaValidatio
   const admissionNi = identify("glossary.term.admission", admissionBody).token;
   const readoutBody = Object.freeze({
     kind: "workspace.glossary-utterance-readout",
-    version: 1,
-    apex: ARTICULATING_APEX,
+    version: 2,
+    implementation: articulation.implementation,
     termNi,
     forward: Object.freeze([
       Object.freeze({ morphism: "admit-carrier", domain: resource.source.ni, codomain: admissionNi }),
@@ -141,9 +152,9 @@ function articulateGlossaryTerm(resource, readout, termSchemaNi, schemaValidatio
       Object.freeze({ demand: "carrier-bytes-preserved", witness: resource.source.ni }),
       Object.freeze({ demand: "term-schema-admitted", witness: termSchemaNi }),
       Object.freeze({ demand: "token-and-claim-present", witness: articulation.requestNi }),
-      Object.freeze({ demand: "articulating-apex-bound", witness: ARTICULATING_APEX }),
+      Object.freeze({ demand: "local-articulation-retained", witness: articulation.id }),
     ]),
-    articulationReceiptNi: articulation.id,
+    articulationReadoutNi: articulation.id,
     predicationGeneratorsNi,
     correspondence: Object.freeze({
       disposition: "obstructed",
@@ -293,7 +304,7 @@ export function catalogWorkspaceContentGraph({ resources } = {}) {
     relate(readout.term.token, "urn:glossary:means", readout.term.definition, [readout.articulation.id]);
     relate(readout.termNi, "urn:semiotic:has-node-articulation-readout", readout.articulation.id, [readout.articulation.requestNi]);
     relate(readout.articulation.id, "urn:semiotic:presents-predication-generators", readout.predicationGeneratorsNi, [readout.articulation.id]);
-    relate(readout.id, "urn:semiotic:has-apex", readout.apex, [readout.articulation.id]);
+    relate(readout.id, "urn:semiotic:uses-implementation", readout.implementation, [readout.articulation.id]);
   }
   const glossaryOverlaps = [...Map.groupBy(glossaryUtteranceReadouts, (readout) => readout.term.token).entries()]
     .filter(([, readouts]) => new Set(readouts.map((readout) => readout.term.definition)).size > 1)
@@ -306,7 +317,7 @@ export function catalogWorkspaceContentGraph({ resources } = {}) {
   relations.sort((left, right) => left.subject.localeCompare(right.subject) || left.predicate.localeCompare(right.predicate) || left.object.localeCompare(right.object));
   const body = Object.freeze({
     type: "WorkspaceContentGraph",
-    version: 3,
+    version: 4,
     denominator: Object.freeze({ observedResources: admitted.length, packageActors: packages.length, glossaryUtteranceReadouts: glossaryUtteranceReadouts.length, glossaryRefusals: glossaryRefusals.length, glossaryOverlaps: glossaryOverlaps.length }),
     packages: Object.freeze(packages),
     resources: Object.freeze(admitted.map(({ value: _value, identity, ...resource }) => Object.freeze({ ...resource, semanticNi: identity.token }))),

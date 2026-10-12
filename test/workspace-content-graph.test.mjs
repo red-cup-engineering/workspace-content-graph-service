@@ -24,8 +24,12 @@ test("a glossary term presents predication generators without fabricating eviden
   });
 
   assert.equal(graph.glossaryUtteranceReadouts.length, 1);
-  assert.equal(graph.version, 3);
+  assert.equal(graph.version, 4);
   const [readout] = graph.glossaryUtteranceReadouts;
+  assert.equal(readout.articulation.kind, "workspace.glossary-articulation.readout");
+  assert.equal(readout.articulation.implementation, "@lenticule-science/articulating#articulate");
+  assert.equal(Object.hasOwn(readout.articulation, "identifiers"), false);
+  assert.equal(Object.hasOwn(readout, "apex"), false);
   assert.equal(readout.predicationGenerators.kind, "predication.site");
   assert.equal(readout.predicationGenerators.cells.length, 1);
   assert.equal(readout.predicationGenerators.specializations.length, 0);
@@ -45,4 +49,19 @@ test("a glossary term presents predication generators without fabricating eviden
   assert.equal(Object.hasOwn(presentation, "reading"), false);
   assert.equal(Object.hasOwn(presentation, "positive"), false);
   assert.equal(Object.hasOwn(presentation, "negative"), false);
+});
+
+
+test("local articulation preserves exact request custody and refuses oversized glossary work", () => {
+  const resources = [
+    { path: "term.schema.json", content: JSON.stringify(termSchema) },
+    { path: "friend.json", content: JSON.stringify({ id: "friend", name: "Friend", definition: "A person held in mutual affection." }) },
+  ];
+  const first = catalogWorkspaceContentGraph({ resources });
+  const replay = catalogWorkspaceContentGraph({ resources });
+  assert.deepEqual(replay, first);
+  assert.equal(first.glossaryUtteranceReadouts[0].articulationReadoutNi, first.glossaryUtteranceReadouts[0].articulation.id);
+  assert.throws(() => catalogWorkspaceContentGraph({ resources: [resources[0], {
+    path: "large.json", content: JSON.stringify({ id: "large", name: "Large", definition: "x".repeat(65_536) }),
+  }] }), /glossary articulation input exceeds/);
 });
