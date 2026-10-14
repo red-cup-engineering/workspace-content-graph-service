@@ -7,7 +7,7 @@ import {
   IDENTITY_SETTLEMENT_PROFILE,
   identifyBytesSemanticContent,
   identifyJsonSemanticContent,
-} from "@red-cup-engineering/semantic-content-identify-service";
+} from "@red-cup-engineering/computer-content-address-engineering-services-section/semantic-content-identity";
 
 const DEPENDENCY_FIELDS = Object.freeze(["dependencies", "optionalDependencies", "peerDependencies"]);
 
