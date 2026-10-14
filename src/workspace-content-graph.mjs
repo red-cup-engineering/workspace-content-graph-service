@@ -1,5 +1,5 @@
-import { articulate, mark, utterance } from "@lenticule-science/articulating";
-import { predicate, presentPredicationSite } from "@lenticule-science/articulating/predicating";
+import { executeArticulateUtterance } from "@red-cup-engineering/signcell/articulating";
+import { predicate, presentPredicationSite } from "@red-cup-engineering/signcell/predication";
 import { readMarkdownDocument } from "@red-cup-engineering/markdown-engineering-services-section/read-markdown-document";
 import { createSchema, validateInstance } from "@red-cup-engineering/json-schema-services-section";
 import {
@@ -110,21 +110,29 @@ function articulateGlossaryTerm(resource, readout, termSchemaNi, schemaValidatio
   const termNi = identify("glossary.term", termBody).token;
   // This is a local mathematical readout, not a language-cone service receipt
   // or a Lean/Solidity correspondence proof. Use the actual primitive once.
-  const request = Object.freeze({ tokenMark: readout.token, claimMark: readout.definition });
+  const request = Object.freeze({
+    tokenMark: readout.token, claimMark: readout.definition,
+    source: Object.freeze({ path: resource.path, carrierBytesNi: resource.source.ni,
+      carrierSemanticNi: resource.identity.token,
+      span: Object.freeze({ unit: "utf8-byte", start: 0, end: resource.source.bytes }),
+      selection: "whole-carrier", interpretation: "schema-admitted-local-glossary-readout" }),
+  });
   if (Buffer.byteLength(JSON.stringify(request), "utf8") > 65_536) {
     throw new RangeError("glossary articulation input exceeds 65536 bytes");
   }
   const requestNi = identify("workspace.glossary-articulation.request", request).token;
-  const nativeCell = articulate(utterance(mark(request.tokenMark), mark(request.claimMark)));
+  const nativeReceipt = executeArticulateUtterance(request);
   const articulationBody = Object.freeze({
     kind: "workspace.glossary-articulation.readout",
     version: 1,
-    implementation: "@lenticule-science/articulating#articulate",
+    implementation: nativeReceipt.identifiers.node,
     requestNi,
-    cell: structuredClone(nativeCell),
+    source: request.source,
+    nativeReceipt,
+    cell: nativeReceipt.cell,
   });
   const articulation = Object.freeze({ ...articulationBody, id: identify(articulationBody.kind, articulationBody).token });
-  const predicationGenerators = presentPredicationSite(predicate(nativeCell));
+  const predicationGenerators = presentPredicationSite(predicate(nativeReceipt.cell));
   const predicationGeneratorsNi = identify("predication.site.generators", predicationGenerators).token;
   const admissionBody = Object.freeze({
     kind: "glossary.term.admission",
@@ -158,7 +166,7 @@ function articulateGlossaryTerm(resource, readout, termSchemaNi, schemaValidatio
     predicationGeneratorsNi,
     correspondence: Object.freeze({
       disposition: "obstructed",
-      nodeLeanArticulation: "node-potential-cell-transports-the-exact-token-with-an-empty-claim-slot",
+      nodeLeanArticulation: "native-node-receipt-retains-token-and-claim-carrier-with-an-empty-articulated-claim-slot; no-cross-language-proof-is-performed",
       curryHowardLambek: "no-glossary-prose-to-typed-term-derivation-or-cone-map-is-implemented",
       orientation: "articulate-then-predicate-produces-only-the-reflexive-predication-generator",
       positing: "no-positive-or-negative-evidence-source-is-present",
