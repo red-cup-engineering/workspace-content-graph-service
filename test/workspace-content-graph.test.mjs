@@ -27,7 +27,7 @@ test("a glossary term presents predication generators without fabricating eviden
   assert.equal(graph.version, 4);
   const [readout] = graph.glossaryUtteranceReadouts;
   assert.equal(readout.articulation.kind, "workspace.glossary-articulation.readout");
-  assert.equal(readout.articulation.implementation, "@lenticule-science/articulating#articulate");
+  assert.equal(readout.articulation.implementation, "@red-cup-engineering/signcell/utterance#articulate");
   assert.equal(Object.hasOwn(readout.articulation, "identifiers"), false);
   assert.equal(Object.hasOwn(readout, "apex"), false);
   assert.equal(readout.predicationGenerators.kind, "predication.site");
