@@ -1,6 +1,6 @@
 {
   "name": "@red-cup-engineering/workspace-content-graph-service",
-  "version": "0.5.2",
+  "version": "0.9.1",
   "private": false,
   "type": "module",
   "description": "Reads package apexes, JSON Schemas, and Markdown into one addressed actor/content graph, exposing Node glossary descent readouts and explicit formal-correspondence obstructions.",
@@ -29,9 +29,9 @@
     "postcondition": "urn:semiotic:type:WorkspaceContentGraph"
   },
   "dependencies": {
-    "@red-cup-engineering/signcell": "workspace:*",
-    "@red-cup-engineering/json-schema-services-section": "workspace:*",
-    "@red-cup-engineering/markdown-engineering-services-section": "workspace:*",
-    "@red-cup-engineering/computer-content-address-engineering-services-section": "workspace:*"
+    "@red-cup-engineering/signcell": "0.1.0",
+    "@red-cup-engineering/json-schema-services-section": "0.5.0",
+    "@red-cup-engineering/markdown-engineering-services-section": "0.5.1",
+    "@red-cup-engineering/computer-content-address-engineering-services-section": "0.2.0"
   }
 }
