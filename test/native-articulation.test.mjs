@@ -4,7 +4,7 @@ import { catalogWorkspaceContentGraph } from "../src/workspace-content-graph.mjs
 import { ARTICULATING_APEX, ARTICULATING_LANGUAGE_IDENTIFIERS, executeArticulateUtterance } from "@red-cup-engineering/signcell/articulating";
 import { predicate, presentPredicationSite } from "@red-cup-engineering/signcell/predication";
 import { canonicalCarrier, semanticId } from "@red-cup-engineering/computer-content-address-engineering-services-section/semiotic-content-address";
-import { EMPTY_WITNESS_ROOT, identifyJsonSemanticContent } from "@red-cup-engineering/computer-content-address-engineering-services-section/semantic-content-identity";
+import { EMPTY_WITNESS_ROOT, identifyJsonSemanticContent } from "@red-cup-engineering/computer-data-engineering-services-section/semiotic-expression-notation/semantic-content-identity";
 
 const termSchema = {
   $id: "emsenn/schema/term", type: "object", required: ["id", "name", "definition"], additionalProperties: false,
