@@ -4,6 +4,11 @@
   "private": false,
   "type": "module",
   "description": "Reads package apexes, JSON Schemas, and Markdown into one addressed actor/content graph, exposing Node glossary descent readouts and explicit formal-correspondence obstructions.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/red-cup-engineering/computer-code-engineering-services-section.git",
+    "directory": "services/computer-code-development-services-section/services/workspace-content-graph-service"
+  },
   "license": "Apache-2.0",
   "exports": {
     ".": "./src/workspace-content-graph.mjs"
