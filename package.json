@@ -1,9 +1,10 @@
 {
   "name": "@red-cup-engineering/workspace-content-graph-service",
-  "version": "0.9.1",
+  "version": "0.10.0",
   "private": false,
   "type": "module",
-  "description": "Reads package apexes, JSON Schemas, and Markdown into one addressed actor/content graph, exposing Node glossary descent readouts and explicit formal-correspondence obstructions.",
+  "sideEffects": false,
+  "description": "Reads observed workspace resources into an addressed graph with source-bound schema lineage and native SignCell glossary and reference readouts.",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/red-cup-engineering/workspace-content-graph-service.git"
@@ -20,7 +21,7 @@
     "src"
   ],
   "scripts": {
-    "check": "node --check src/workspace-content-graph.mjs && node --check scripts/catalog-workspace-content-graph.mjs",
+    "check": "node --check src/workspace-content-graph.mjs && node --check src/schema-lineage.mjs && node --check scripts/catalog-workspace-content-graph.mjs",
     "test": "node --test test/*.test.mjs",
     "verify": "npm run check && npm test"
   },
@@ -44,3 +45,4 @@
     "url": "https://github.com/561-group/.github/blob/main/TIPS.md"
   }
 }
+
