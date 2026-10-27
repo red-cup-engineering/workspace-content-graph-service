@@ -2,6 +2,7 @@ import { executeArticulateUtterance } from "@red-cup-engineering/signcell/articu
 import { predicate, presentPredicationSite } from "@red-cup-engineering/signcell/predication";
 import { readMarkdownDocument } from "@red-cup-engineering/markdown-engineering-services-section/read-markdown-document";
 import { createSchema, validateInstance } from "@red-cup-engineering/json-schema-services-section";
+import { classifyJsonResource, deriveSchemaLineage } from "./schema-lineage.mjs";
 import {
   EMPTY_WITNESS_ROOT,
   IDENTITY_SETTLEMENT_PROFILE,
@@ -61,15 +62,6 @@ function owningPackage(packages, pathname) {
   return packages
     .filter(({ directory }) => directory === "" || pathname.startsWith(`${directory}/`))
     .sort((left, right) => right.directory.length - left.directory.length)[0] ?? null;
-}
-
-function schemaReferences(value, found = []) {
-  if (Array.isArray(value)) for (const item of value) schemaReferences(item, found);
-  else if (value !== null && typeof value === "object") for (const [key, item] of Object.entries(value)) {
-    if (key === "$ref" && typeof item === "string") found.push(item);
-    else schemaReferences(item, found);
-  }
-  return found;
 }
 
 function stringList(value) {
@@ -192,22 +184,26 @@ function articulateGlossaryTerm(resource, readout, termSchemaNi, schemaValidatio
  */
 export function catalogWorkspaceContentGraph({ resources } = {}) {
   if (!Array.isArray(resources) || resources.length === 0) throw new TypeError("resources must be a non-empty observed workspace set");
+  const observedPaths = new Set();
   const admitted = resources.map((resource, index) => {
     if (resource === null || typeof resource !== "object" || Array.isArray(resource)) throw new TypeError(`resources[${index}] must be an object`);
+    if (resource.mediaType !== undefined && (typeof resource.mediaType !== "string" || resource.mediaType.trim() === "")) throw new TypeError(`resources[${index}].mediaType must be non-empty text`);
     const pathname = path(resource.path), content = text(resource.content, `resources[${index}].content`), source = artifact(pathname, content);
-    if (pathname.endsWith("package.json")) {
+    if (observedPaths.has(pathname)) throw new TypeError(`duplicate observed resource.path: ${pathname}`);
+    observedPaths.add(pathname);
+    if (pathname === "package.json" || pathname.endsWith("/package.json")) {
       let value;
       try { value = JSON.parse(content); } catch (error) { throw new TypeError(`${pathname} is not JSON: ${error.message}`); }
       text(value.name, `${pathname}.name`); text(value.version, `${pathname}.version`);
       const identity = identify("npm.package-manifest", value);
       return Object.freeze({ kind: "package-manifest", path: pathname, source, value, identity });
     }
-    if (pathname.endsWith(".json")) {
+    if (pathname.endsWith(".json") || resource.mediaType?.split(";", 1)[0].trim().toLowerCase() === "application/schema+json") {
       let value;
       try { value = JSON.parse(content); } catch { return Object.freeze({ kind: "json", path: pathname, source, value: content, identity: identify("content.json-text", { path: pathname, content }) }); }
-      const isSchema = typeof value?.$schema === "string" || typeof value?.$id === "string" || pathname.endsWith(".schema.json");
-      const identity = identify(isSchema ? "content.json-schema" : "content.json", value);
-      return Object.freeze({ kind: isSchema ? "json-schema" : "json", path: pathname, source, value, identity });
+      const classification = classifyJsonResource(resource, value, pathname);
+      const identity = identify(classification.kind === "json-schema" ? "content.json-schema" : "content.json", value);
+      return Object.freeze({ ...classification, path: pathname, source, value, identity });
     }
     if (/\.(?:md|mdown|markdown)$/iu.test(pathname)) {
       const document = readMarkdownDocument(content);
@@ -235,12 +231,13 @@ export function catalogWorkspaceContentGraph({ resources } = {}) {
     return Object.freeze({ ...body, id: identify("npm.package-actor-apex", body).token });
   });
 
-  const termSchema = admitted.find((resource) => resource.kind === "json-schema" && resource.value.$id === "emsenn/schema/term") ?? null;
+  const termSchemas = admitted.filter((resource) => resource.kind === "json-schema" && resource.value?.$id === "emsenn/schema/term");
+  const termSchema = termSchemas.length === 1 ? termSchemas[0] : null;
   const termSchemaNi = termSchema?.identity.token ?? null;
   const admittedTermSchema = termSchema === null ? null : createSchema(termSchema.value, undefined, { allowUnknownAnnotations: true }).schema;
   const glossaryOutcomes = admitted.flatMap((resource) => glossaryTermReadouts(resource).map((readout) => {
     const validation = admittedTermSchema === null
-      ? Object.freeze({ ok: false, errors: Object.freeze([Object.freeze({ pointer: "", keyword: "$schema", message: "emsenn/schema/term is absent from the observed resource set" })]) })
+      ? Object.freeze({ ok: false, errors: Object.freeze([Object.freeze({ pointer: "", keyword: "$schema", message: `emsenn/schema/term is ${termSchemas.length === 0 ? "absent from" : "ambiguous in"} the observed resource set` })]) })
       : validateInstance(readout.instance, admittedTermSchema);
     if (validation.ok) return articulateGlossaryTerm(resource, readout, termSchemaNi, validation);
     const body = Object.freeze({
@@ -256,6 +253,7 @@ export function catalogWorkspaceContentGraph({ resources } = {}) {
   }));
   const glossaryUtteranceReadouts = glossaryOutcomes.filter(({ kind }) => kind === "workspace.glossary-utterance-readout");
   const glossaryRefusals = glossaryOutcomes.filter(({ kind }) => kind === "glossary.term.refusal");
+  const schemaLineage = deriveSchemaLineage(admitted);
 
   const relations = [];
   const relate = (subject, predicate, object, witnessIdentifiers = []) => {
@@ -298,11 +296,19 @@ export function catalogWorkspaceContentGraph({ resources } = {}) {
     const owner = owningPackage(packages, resource.path);
     if (owner !== null) relate(owner.actor, "urn:semiotic:contains", resource.identity.token, [resource.source.ni]);
     if (resource.kind === "json-schema") {
-      if (typeof resource.value.$id === "string") relate(resource.identity.token, "urn:json-schema:declares-id", resource.value.$id, [resource.source.ni]);
-      for (const reference of [...new Set(schemaReferences(resource.value))].sort()) relate(resource.identity.token, "urn:json-schema:references", reference, [resource.source.ni]);
+      if (typeof resource.value?.$id === "string") relate(resource.identity.token, "urn:json-schema:declares-id", resource.value.$id, [resource.source.ni]);
     }
     if (resource.kind === "markdown") for (const heading of resource.document.structure.headings) {
       relate(resource.identity.token, `urn:markdown:heading:${heading.level}`, heading.title, [resource.source.ni]);
+    }
+  }
+  for (const readout of schemaLineage.readouts) {
+    const source = readout.source;
+    if (readout.reference !== "") relate(source.carrierSemanticNi, readout.relation === "schema-reference" ? "urn:json-schema:references" : "urn:json-schema:declares-schema", readout.reference, [source.carrierBytesNi, readout.id]);
+    for (const target of readout.resolution.targets) {
+      const witnesses = [source.carrierBytesNi, target.carrierBytesNi, readout.id];
+      relate(source.carrierSemanticNi, "urn:semiotic:specified-by", target.schemaNi, witnesses);
+      relate(target.schemaNi, "urn:semiotic:describes-carrier", source.carrierSemanticNi, witnesses);
     }
   }
   for (const readout of glossaryUtteranceReadouts) {
@@ -325,14 +331,16 @@ export function catalogWorkspaceContentGraph({ resources } = {}) {
   relations.sort((left, right) => left.subject.localeCompare(right.subject) || left.predicate.localeCompare(right.predicate) || left.object.localeCompare(right.object));
   const body = Object.freeze({
     type: "WorkspaceContentGraph",
-    version: 4,
+    version: 5,
     denominator: Object.freeze({ observedResources: admitted.length, packageActors: packages.length, glossaryUtteranceReadouts: glossaryUtteranceReadouts.length, glossaryRefusals: glossaryRefusals.length, glossaryOverlaps: glossaryOverlaps.length }),
     packages: Object.freeze(packages),
     resources: Object.freeze(admitted.map(({ value: _value, identity, ...resource }) => Object.freeze({ ...resource, semanticNi: identity.token }))),
     glossaryUtteranceReadouts: Object.freeze(glossaryUtteranceReadouts),
     glossaryRefusals: Object.freeze(glossaryRefusals),
     glossaryOverlaps: Object.freeze(glossaryOverlaps),
+    schemaLineage,
     relations: Object.freeze(relations),
   });
   return Object.freeze({ ...body, id: identify("typed-resource-catalog.workspace-content-graph", body).token });
 }
+

@@ -24,7 +24,7 @@ test("a glossary term presents predication generators without fabricating eviden
   });
 
   assert.equal(graph.glossaryUtteranceReadouts.length, 1);
-  assert.equal(graph.version, 4);
+  assert.equal(graph.version, 5);
   const [readout] = graph.glossaryUtteranceReadouts;
   assert.equal(readout.articulation.kind, "workspace.glossary-articulation.readout");
   assert.equal(readout.articulation.implementation, "@red-cup-engineering/signcell/utterance#articulate");
@@ -65,3 +65,4 @@ test("local articulation preserves exact request custody and refuses oversized g
     path: "large.json", content: JSON.stringify({ id: "large", name: "Large", definition: "x".repeat(65_536) }),
   }] }), /glossary articulation input exceeds/);
 });
+
